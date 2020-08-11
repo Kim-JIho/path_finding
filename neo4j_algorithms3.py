@@ -253,7 +253,7 @@ class Neo4jHelper:
                     i["g_value"] = i["g_value"] + j["g_value"]
                     i["f_value"] = i["g_value"] + i["h_value"]
                     i["flag_var"] = True
-        #print("update_open_list222222", update_open_list)
+        print("update_open_list222222", update_open_list)
 
         """
         새로운 오픈리스트가 기존의 경로보다 짧을경우 오픈리스트에 넣고 아니면 오픈리스트를 그대로 둬야 함
@@ -288,6 +288,7 @@ class Neo4jHelper:
         print("adj_search", adj_search)
         print("각 인접노드와 도착노드와의 거리:", each_node_distance)
 
+        #조회해서 opnelist에 붙이는 과정
         each_node_value= each_node_distance
         for i in each_node_value:
             i["g_value"]=0
@@ -296,10 +297,15 @@ class Neo4jHelper:
             i["parent_node"] = node_info_start[0]["main_node_name"]
             del i["adj_distance"]
             i["flag_var"]=False
+
+            #openlist에 붙이기
             if not self.close_list:
                 self.open_list.append(i)
             elif self.close_list[-1]["parent_node"] != i["adj_ID_node"]:
                 self.open_list.append(i)
+
+
+
 
         #print("each_node_value",each_node_value)
         self.open_list=sorted(self.open_list,key=lambda adj_dist:(adj_dist["h_value"]),reverse=True)
@@ -337,6 +343,15 @@ class Neo4jHelper:
 
             # 정렬을 f(x) 기준으로 필요함
             self.open_list = sorted(self.open_list, key=lambda adj_dist: (adj_dist["f_value"]), reverse=True)
+
+            # 오픈리스트의 항목들 h(x)가 크면 새로운 노드로 변환 - 2020-08-11
+            # for node in self.open_list:
+            #     print("node",node)
+            #     for others in self.open_list:
+            #         if node["adj_ID_node"] == others["adj_ID_node"] and node["f_value"] < others["f_value"]:
+            #             for del_node in self.open_list:
+            #                 del del_node
+            #         elif node["adj_ID_node"] == others["adj_ID_node"] and node["f_value"] >= others["f_value"]:
 
             #정렬한 openlist에서
             #f(x)가 가장 작은 값을 closelist에 pop
@@ -445,8 +460,15 @@ if __name__ == '__main__':
     #end_node = helper.search('b7f1907d7f')
     #path=helper.path_finding(start_node,end_node)
     #print(path)
+
     #지진 코드 1
     helper.disaster_A_star('072fd6eee5',1)
+
+    #test
+    # start_node=helper.search('072fd6eee5')
+    # end_node = helper.search('69955b0043')
+    # path=helper.path_finding(start_node,end_node)
+    # print(path)
 
     helper.close()
 
