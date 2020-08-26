@@ -120,7 +120,7 @@ class Neo4jHelper:
     """
     def search(self, id):
         # 노드 정보 수집
-        start_node = helper.retrieve_adj_node_from_cross(id)
+        start_node = self.retrieve_adj_node_from_cross(id)
         #불러오는 정보
         # 0번인덱스 : 인접노드 id
         # 1번인덱스 : 중심노드와 인접노드의 길이 (도로길이)
@@ -304,9 +304,6 @@ class Neo4jHelper:
             elif self.close_list[-1]["parent_node"] != i["adj_ID_node"]:
                 self.open_list.append(i)
 
-
-
-
         #print("each_node_value",each_node_value)
         self.open_list=sorted(self.open_list,key=lambda adj_dist:(adj_dist["h_value"]),reverse=True)
 
@@ -339,19 +336,18 @@ class Neo4jHelper:
             """
             # update_close_list = self.value_update(self.close_list)
             #self.open_list = [self.value_update(self.open_list,self.close_list)]
-            hello_test = [self.value_update(self.open_list, self.close_list)]
+            self.value_update(self.open_list, self.close_list)
 
             # 정렬을 f(x) 기준으로 필요함
             self.open_list = sorted(self.open_list, key=lambda adj_dist: (adj_dist["f_value"]), reverse=True)
 
-            # 오픈리스트의 항목들 h(x)가 크면 새로운 노드로 변환 - 2020-08-11
-            # for node in self.open_list:
-            #     print("node",node)
-            #     for others in self.open_list:
-            #         if node["adj_ID_node"] == others["adj_ID_node"] and node["f_value"] < others["f_value"]:
-            #             for del_node in self.open_list:
-            #                 del del_node
-            #         elif node["adj_ID_node"] == others["adj_ID_node"] and node["f_value"] >= others["f_value"]:
+            # 항목 중복제거 (업데이트2)
+            self.update_de_duplicate()
+
+            # close_list에 있으면 openlist에 넣지 않는 부분 필요함  - 2020-08-26
+            ###################
+
+            #################
 
             #정렬한 openlist에서
             #f(x)가 가장 작은 값을 closelist에 pop
@@ -439,13 +435,51 @@ class Neo4jHelper:
         path = self.path_finding(start_node, end_node)
         print(path)
 
+    def update_de_duplicate(self):
+        temp_openlist = self.open_list.copy()
+        print("pre_openlist_de_duplication", self.open_list)
+        for node in temp_openlist:
+            # 정보추출만
+            print("node", node)
+            temp_id = 0
+            temp_parent = 0
+            temp_value = 0
+            for others in temp_openlist:
+                print("others", others)
+                if node["adj_ID_node"] == others["adj_ID_node"] and node["parent_node"] != others["parent_node"] and \
+                        node["f_value"] < others["f_value"]:  # node를 살리고 others를 죽이기
+                    print("node win")
+                    temp_id = others["adj_ID_node"]
+                    temp_parent = others["parent_node"]
+                    temp_value = others["f_value"]
+                    print(temp_id, temp_parent, temp_value)
+
+                elif node["adj_ID_node"] == others["adj_ID_node"] and node["parent_node"] != others["parent_node"] and \
+                        node["f_value"] >= others["f_value"]:  # others를 살리고 node를 죽이기
+                    print("others win")
+                    temp_id = node["adj_ID_node"]
+                    temp_parent = node["parent_node"]
+                    temp_value = node["f_value"]
+                    print(temp_id, temp_parent, temp_value)
+
+                # 추출정보 조회해서 삭제
+                temp_index = 0
+                for i in self.open_list:
+                    if i["adj_ID_node"] == temp_id and i["parent_node"] == temp_parent and i["f_value"] == temp_value:
+                        print("temp_index", temp_index)
+                        del self.open_list[temp_index]
+
+                    temp_index = temp_index + 1
+                    # print("post_openlist", openlist)
+
+        print("post_openlist", self.open_list)
 
 #현재 무한루프 돌고있음
 #pre2_closelist [{'adj_ID_node': '6fcc8083d7', 'parent_node': '072fd6eee5', 'g_value': 7.827844438321279, 'h_value': 722.9935487595001, 'f_value': 730.8213931978214, 'flag_var': False}, {'adj_ID_node': '9597610a3c', 'parent_node': '6fcc8083d7', 'g_value': 26.353338951237703, 'h_value': 704.9301346504005, 'f_value': 731.2834736016382, 'flag_var': True}, {'adj_ID_node': 'b7f1907d7f', 'parent_node': '9597610a3c', 'g_value': 68.28846943339117, 'h_value': 662.7918016582996, 'f_value': 731.0802710916907, 'flag_var': True}, {'adj_ID_node': '6a83334252', 'parent_node': 'b7f1907d7f', 'g_value': 71.05835563779226, 'h_value': 659.7854279573796, 'f_value': 730.8437835951719, 'flag_var': True}, {'adj_ID_node': 'cc2b1c6777', 'parent_node': '6a83334252', 'g_value': 96.99261777197398, 'h_value': 633.7060402312245, 'f_value': 730.6986580031985, 'flag_var': True}, {'adj_ID_node': '2c2bde8e2b', 'parent_node': 'cc2b1c6777', 'g_value': 108.72659833716341, 'h_value': 622.6375237400423, 'f_value': 731.3641220772057, 'flag_var': True}]
 
 if __name__ == '__main__':
     #객체 생성
-    helper = Neo4jHelper('bolt://165.194.27.127:7687', user='neo4j', password='1234')
+    A_star = Neo4jHelper('bolt://165.194.27.127:7687', user='neo4j', password='1234')
     #helper.retrieve_adj_shelter('072fd6eee5', 5)
 
     # 여기에서 나온 쉘터의 id -> 근처 도로와 크로스 노드 조회 -> 크로스 노드 id와 출발점 거리 중 가까운 것을 택하여 도착지점으로 선정
@@ -462,14 +496,14 @@ if __name__ == '__main__':
     #print(path)
 
     #지진 코드 1
-    helper.disaster_A_star('072fd6eee5',1)
+    #A_star.disaster_A_star('072fd6eee5',1)
 
     #test
-    # start_node=helper.search('072fd6eee5')
-    # end_node = helper.search('69955b0043')
-    # path=helper.path_finding(start_node,end_node)
-    # print(path)
+    start_node=A_star.search('023dd00b8c')
+    end_node = A_star.search('1151bd15f4')
+    path=A_star.path_finding(start_node,end_node)
+    print(path)
 
-    helper.close()
+    A_star.close()
 
 
