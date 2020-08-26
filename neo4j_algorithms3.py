@@ -6,6 +6,7 @@ from haversine import haversine
 
 class Neo4jHelper:
     def __init__(self, uri, user, password):
+        self.start_flag = False
         self._driver = GraphDatabase.driver(uri, auth=(user, password), encrypted=False)
         self.rd_map = {}
         self.crs_map = {}
@@ -248,7 +249,10 @@ class Neo4jHelper:
             #print("iii", i["parent_node"])
             for j in update_close_list:
                 #print("jjj", j["adj_ID_node"])
-                if (i["parent_node"] == j["adj_ID_node"])and (i["flag_var"] == False):
+                if self.start_flag == False:
+                    self.start_flag = True
+                    break
+                elif (i["parent_node"] == j["adj_ID_node"])and (i["flag_var"] == False) :
                     print("-------update------")
                     i["g_value"] = i["g_value"] + j["g_value"]
                     i["f_value"] = i["g_value"] + i["h_value"]
@@ -299,9 +303,22 @@ class Neo4jHelper:
             i["flag_var"]=False
 
             #openlist에 붙이기
-            if not self.close_list:
-                self.open_list.append(i)
-            elif self.close_list[-1]["parent_node"] != i["adj_ID_node"]:
+            #if not self.close_list: #처음에 리스트에 아무것도 없을 때 수행
+            #    self.open_list.append(i)
+            # elif self.close_list[-1]["parent_node"] != i["adj_ID_node"]:
+            #     self.open_list.append(i)
+
+            # 새로 검색된 노드정보를 open_list에 붙일 때 이미 close_list에 있는, 즉, 이미 방문했던 노드라면 붙이지 않는다. 그렇지 않으면 붙인다.
+            flag_var=True
+            for close_list_node in self.close_list:
+                if close_list_node["adj_ID_node"] == i["adj_ID_node"] and close_list_node["parent_node"] == i["parent_node"]:
+                    print("이번 i는 붙이면 안됨")
+                    flag_var=False
+                    break
+                elif self.close_list[-1]["parent_node"] == i["adj_ID_node"]:
+                    flag_var=False
+
+            if flag_var == True:
                 self.open_list.append(i)
 
         #print("each_node_value",each_node_value)
@@ -332,7 +349,6 @@ class Neo4jHelper:
 
             """
             update
-            이 부분에서 선택적으로 업데이트가 필요함... 방법...
             """
             # update_close_list = self.value_update(self.close_list)
             #self.open_list = [self.value_update(self.open_list,self.close_list)]
@@ -343,11 +359,6 @@ class Neo4jHelper:
 
             # 항목 중복제거 (업데이트2)
             self.update_de_duplicate()
-
-            # close_list에 있으면 openlist에 넣지 않는 부분 필요함  - 2020-08-26
-            ###################
-
-            #################
 
             #정렬한 openlist에서
             #f(x)가 가장 작은 값을 closelist에 pop
@@ -408,10 +419,13 @@ class Neo4jHelper:
             return adj_list
 
     def disaster_A_star(self,start_ID,disaster_code):
+        start_node_info = {'adj_ID_node': start_ID, 'parent_node': None, 'flag_var': False}
+        print("start_node_info", start_node_info)
+        self.close_list.append(start_node_info)
         # 지진상황 대피소 추출
         if disaster_code==1:
             shelter_list = []
-            for sh in self.retrieve_adj_shelter('072fd6eee5', 5):
+            for sh in self.retrieve_adj_shelter(start_ID, 5): ###############수정해야 함
                 shelter_list.append(sh)
 
             #가장 가까운 대피소 노드에서 인접한 cross 노드 추출
@@ -430,7 +444,6 @@ class Neo4jHelper:
 
         end_node = self.search(temp_adj_cross[0]['nodeID'])
         #end_node = self.search('b7f1907d7f')
-
 
         path = self.path_finding(start_node, end_node)
         print(path)
@@ -472,7 +485,7 @@ class Neo4jHelper:
                     temp_index = temp_index + 1
                     # print("post_openlist", openlist)
 
-        print("post_openlist", self.open_list)
+        print("post_openlist_duplicate", self.open_list)
 
 #현재 무한루프 돌고있음
 #pre2_closelist [{'adj_ID_node': '6fcc8083d7', 'parent_node': '072fd6eee5', 'g_value': 7.827844438321279, 'h_value': 722.9935487595001, 'f_value': 730.8213931978214, 'flag_var': False}, {'adj_ID_node': '9597610a3c', 'parent_node': '6fcc8083d7', 'g_value': 26.353338951237703, 'h_value': 704.9301346504005, 'f_value': 731.2834736016382, 'flag_var': True}, {'adj_ID_node': 'b7f1907d7f', 'parent_node': '9597610a3c', 'g_value': 68.28846943339117, 'h_value': 662.7918016582996, 'f_value': 731.0802710916907, 'flag_var': True}, {'adj_ID_node': '6a83334252', 'parent_node': 'b7f1907d7f', 'g_value': 71.05835563779226, 'h_value': 659.7854279573796, 'f_value': 730.8437835951719, 'flag_var': True}, {'adj_ID_node': 'cc2b1c6777', 'parent_node': '6a83334252', 'g_value': 96.99261777197398, 'h_value': 633.7060402312245, 'f_value': 730.6986580031985, 'flag_var': True}, {'adj_ID_node': '2c2bde8e2b', 'parent_node': 'cc2b1c6777', 'g_value': 108.72659833716341, 'h_value': 622.6375237400423, 'f_value': 731.3641220772057, 'flag_var': True}]
@@ -500,7 +513,12 @@ if __name__ == '__main__':
 
     #test
     start_node=A_star.search('023dd00b8c')
-    end_node = A_star.search('1151bd15f4')
+    end_node = A_star.search('4897df8757')
+
+    start_node_info = {'adj_ID_node': '4897df8757', 'parent_node': None, 'g_value':0, 'h_value':0, 'f_value':0, 'flag_var': False}
+    print("start_node_info", start_node_info)
+    A_star.close_list.append(start_node_info)
+
     path=A_star.path_finding(start_node,end_node)
     print(path)
 
