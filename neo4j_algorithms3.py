@@ -419,7 +419,7 @@ class Neo4jHelper:
             return adj_list
 
     def disaster_A_star(self,start_ID,disaster_code):
-        start_node_info = {'adj_ID_node': start_ID, 'parent_node': None, 'flag_var': False}
+        start_node_info = {'adj_ID_node': start_ID, 'parent_node': None, 'g_value':0, 'h_value':0, 'f_value':0, 'flag_var': False}
         print("start_node_info", start_node_info)
         self.close_list.append(start_node_info)
         # 지진상황 대피소 추출
@@ -509,18 +509,18 @@ if __name__ == '__main__':
     #print(path)
 
     #지진 코드 1
-    #A_star.disaster_A_star('072fd6eee5',1)
+    A_star.disaster_A_star('023dd00b8c',1)
 
     #test
-    start_node=A_star.search('023dd00b8c')
-    end_node = A_star.search('4897df8757')
-
-    start_node_info = {'adj_ID_node': '4897df8757', 'parent_node': None, 'g_value':0, 'h_value':0, 'f_value':0, 'flag_var': False}
-    print("start_node_info", start_node_info)
-    A_star.close_list.append(start_node_info)
-
-    path=A_star.path_finding(start_node,end_node)
-    print(path)
+    # start_node=A_star.search('023dd00b8c')
+    # end_node = A_star.search('4897df8757')
+    #
+    # start_node_info = {'adj_ID_node': '4897df8757', 'parent_node': None, 'g_value':0, 'h_value':0, 'f_value':0, 'flag_var': False}
+    # print("start_node_info", start_node_info)
+    # A_star.close_list.append(start_node_info)
+    #
+    # path=A_star.path_finding(start_node,end_node)
+    # print(path)
 
     A_star.close()
 
