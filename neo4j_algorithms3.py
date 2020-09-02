@@ -10,6 +10,7 @@ class Neo4jHelper:
         self._driver = GraphDatabase.driver(uri, auth=(user, password), encrypted=False)
         self.rd_map = {}
         self.crs_map = {}
+        self.xy_map={}
         self.load_property()
         self.open_list = []  # 검색해야하는 노드
         self.close_list = []  # 검색이 끝난 노드
@@ -21,7 +22,16 @@ class Neo4jHelper:
             for row in csvf:
                 crs = dict(row)
                 self.crs_map[crs['CRS_ID']] = crs
+                #print(self.crs_map)
+                #print(self.crs_map[crs['CRS_ID']])
 
+        with open('C:/Users/m/Desktop/kisti재난대피/QGIS 개발/neo4j 핵심자료/Resource/TL_SPRD_CRS_WGS84.csv', 'r', encoding='utf-8') as xy:
+            csvf = csv.DictReader(xy)
+            for row in csvf:
+                xy = dict(row)
+                self.xy_map[xy['xcoord'],xy['ycoord']] = xy
+                #print(self.xy_map)
+                #print(self.xy_map[xy['xcoord']])
 
         #with open('C:\\Users\pkjoh\Desktop\Resource\dilpreprocessor\graph\data\TL_SPRD_RD_COMPLETE4.csv', 'r', encoding='utf-8') as rd_id:
         with open('C:/Users/m/Desktop/kisti재난대피/QGIS 개발/neo4j 핵심자료/Resource/TL_SPRD_RD.csv', 'r', encoding='utf-8') as rd_id:
@@ -104,6 +114,10 @@ class Neo4jHelper:
 
     def get_y_of(self, _crs_id):
         return float(self.crs_map[_crs_id]['ycoord'])
+
+    def get_ID_of(self, _x,_y):
+        return self.xy_map[(_x,_y)]['CRS_ID']
+
 
     #####################################################
     #RD 정보
@@ -253,11 +267,11 @@ class Neo4jHelper:
                     self.start_flag = True
                     break
                 elif (i["parent_node"] == j["adj_ID_node"])and (i["flag_var"] == False) :
-                    print("-------update------")
+                    #print("-------update------")
                     i["g_value"] = i["g_value"] + j["g_value"]
                     i["f_value"] = i["g_value"] + i["h_value"]
                     i["flag_var"] = True
-        print("update_open_list222222", update_open_list)
+        #print("update_open_list222222", update_open_list)
 
         """
         새로운 오픈리스트가 기존의 경로보다 짧을경우 오픈리스트에 넣고 아니면 오픈리스트를 그대로 둬야 함
@@ -270,8 +284,8 @@ class Neo4jHelper:
         #종점노드 node_info_end
         start_point_node=node_info_start[0]["main_node_name"]
         destination_node= node_info_end[0]["main_node_name"]
-        print("strat",node_info_start)
-        print("end",node_info_end)
+        #print("strat",node_info_start)
+        #print("end",node_info_end)
 
         # 두 노드 사이의 거리 계산 --> 실제 가진 length데이터와 유클리드 거리의 큰 차이가 나타나지 않음
         # 그냥 진행해도 상관없음
@@ -289,8 +303,8 @@ class Neo4jHelper:
                 if i["adj_ID_node"] == j["adj_ID_node"]:
                     i["road_length"] = j["road_length"]
                     i["parent_node"] = start_point_node
-        print("adj_search", adj_search)
-        print("각 인접노드와 도착노드와의 거리:", each_node_distance)
+        #print("adj_search", adj_search)
+        #print("각 인접노드와 도착노드와의 거리:", each_node_distance)
 
         #조회해서 opnelist에 붙이는 과정
         each_node_value= each_node_distance
@@ -312,7 +326,7 @@ class Neo4jHelper:
             flag_var=True
             for close_list_node in self.close_list:
                 if close_list_node["adj_ID_node"] == i["adj_ID_node"] and close_list_node["parent_node"] == i["parent_node"]:
-                    print("이번 i는 붙이면 안됨")
+                    #print("이번 i는 붙이면 안됨")
                     flag_var=False
                     break
                 elif self.close_list[-1]["parent_node"] == i["adj_ID_node"]:
@@ -326,8 +340,8 @@ class Neo4jHelper:
 
         #다음 노드가 바로 인접이면 끝
         for i in self.open_list[-1:]:
-            print("pre_openlist",self.open_list)
-            print("pre_closelist",self.close_list)
+            #print("pre_openlist",self.open_list)
+            #print("pre_closelist",self.close_list)
 
             # load_length--> g_value
             for k in self.open_list:
@@ -344,8 +358,8 @@ class Neo4jHelper:
             새로운 copy 리스트 -> 밑에서 조건문 
             """
             #################################################
-            print("pre2_openlist", self.open_list)
-            print("pre2_closelist", self.close_list)
+            #print("pre2_openlist", self.open_list)
+            #print("pre2_closelist", self.close_list)
 
             """
             update
@@ -368,8 +382,8 @@ class Neo4jHelper:
             del self.open_list[-1]
             self.close_list.append(temp_list)
 
-            print("post_openlist",self.open_list)
-            print("post_closelist",self.close_list)
+            #print("post_openlist",self.open_list)
+            #print("post_closelist",self.close_list)
 
             if i["adj_ID_node"] == destination_node:
                 for j in node_info_start:
@@ -383,12 +397,14 @@ class Neo4jHelper:
                     except:
                         pass
             else:
-                print("*****************")
+                #print("*****************")
                 restart_node = self.search(close_node_name)
-                print("restart_node",restart_node)
+                #print("restart_node",restart_node)
                 self.path_finding(restart_node,node_info_end)
 
-            return self.path
+
+
+        return self.path
 
     def to_cross_from_shelter(self,_id):
         query = 'match(s: Shelter) where s.ID = "' + str(_id) + '" return (s) - [:Connection]-(:Road) - [: Connection]-(:Cross)'
@@ -416,11 +432,15 @@ class Neo4jHelper:
             for cross in temp_list:
                 adj_list.append(cross)
 
+
             return adj_list
 
-    def disaster_A_star(self,start_ID,disaster_code):
+    def disaster_A_star(self,x,y,disaster_code):
+        #x,y -> ID
+        start_ID=self.get_ID_of(x,y)
         start_node_info = {'adj_ID_node': start_ID, 'parent_node': None, 'g_value':0, 'h_value':0, 'f_value':0, 'flag_var': False}
-        print("start_node_info", start_node_info)
+
+        #print("start_node_info", start_node_info)
         self.close_list.append(start_node_info)
         # 지진상황 대피소 추출
         if disaster_code==1:
@@ -441,51 +461,105 @@ class Neo4jHelper:
             temp_tupple={"nodeID":i, "distance":temp}
             temp_adj_cross.append(temp_tupple)
         temp_adj_cross = sorted(temp_adj_cross,key=lambda temp_adj_cross: (temp_adj_cross["distance"]),reverse=False)
+        print("shelter_candidate:  ", temp_adj_cross)
 
         end_node = self.search(temp_adj_cross[0]['nodeID'])
-        #end_node = self.search('b7f1907d7f')
 
-        path = self.path_finding(start_node, end_node)
-        print(path)
+        print("start_node: ", start_node_info['adj_ID_node'], "end_node: ", end_node[0]["main_node_name"])
+
+        #end_node = self.search('b7f1907d7f')
+        close_list_final = self.path_finding(start_node, end_node)
+        path=self.result_parsing(close_list_final)
+        final_path = self.from_id_to_xy(path)
+
+
+        # return path
+        return final_path
 
     def update_de_duplicate(self):
         temp_openlist = self.open_list.copy()
-        print("pre_openlist_de_duplication", self.open_list)
+        #print("pre_openlist_de_duplication", self.open_list)
         for node in temp_openlist:
             # 정보추출만
-            print("node", node)
+            #print("node", node)
             temp_id = 0
             temp_parent = 0
             temp_value = 0
             for others in temp_openlist:
-                print("others", others)
+                #print("others", others)
                 if node["adj_ID_node"] == others["adj_ID_node"] and node["parent_node"] != others["parent_node"] and \
                         node["f_value"] < others["f_value"]:  # node를 살리고 others를 죽이기
-                    print("node win")
+                    #print("node win")
                     temp_id = others["adj_ID_node"]
                     temp_parent = others["parent_node"]
                     temp_value = others["f_value"]
-                    print(temp_id, temp_parent, temp_value)
+                    #print(temp_id, temp_parent, temp_value)
 
                 elif node["adj_ID_node"] == others["adj_ID_node"] and node["parent_node"] != others["parent_node"] and \
                         node["f_value"] >= others["f_value"]:  # others를 살리고 node를 죽이기
-                    print("others win")
+                    #print("others win")
                     temp_id = node["adj_ID_node"]
                     temp_parent = node["parent_node"]
                     temp_value = node["f_value"]
-                    print(temp_id, temp_parent, temp_value)
+                    #print(temp_id, temp_parent, temp_value)
 
                 # 추출정보 조회해서 삭제
                 temp_index = 0
                 for i in self.open_list:
                     if i["adj_ID_node"] == temp_id and i["parent_node"] == temp_parent and i["f_value"] == temp_value:
-                        print("temp_index", temp_index)
+                        #print("temp_index", temp_index)
                         del self.open_list[temp_index]
 
                     temp_index = temp_index + 1
                     # print("post_openlist", openlist)
 
-        print("post_openlist_duplicate", self.open_list)
+        #print("post_openlist_duplicate", self.open_list)
+
+    def result_parsing(self,close_list_final):
+        final_path=[]
+        temp=close_list_final.copy()
+        pre_path_list = temp[-1].copy()
+
+        final_path.append(pre_path_list[-1])
+        adj_ID_node=pre_path_list[-1]["adj_ID_node"]
+        parent_node=pre_path_list[-1]["parent_node"]
+        del pre_path_list[-1]
+
+        #print("adj,parent",adj_ID_node,parent_node)
+
+        for pre_path in pre_path_list[::-1]:
+            if pre_path["adj_ID_node"] == parent_node:
+                final_path.append(pre_path)
+                adj_ID_node = pre_path["adj_ID_node"]
+                parent_node = pre_path["parent_node"]
+
+        temp_list=[]
+        for i in final_path[::-1]:
+            temp_list.append(i)
+
+        final_path=temp_list
+        #print("final_path", final_path)
+        return final_path
+
+    def from_id_to_xy(self,final_path):
+        temp_path_list=final_path.copy()
+        final_path_list=[]
+
+        for path in temp_path_list:
+            temp_list = []
+            ID = path["adj_ID_node"]
+            length= path["g_value"]
+            x = self.get_x_of(ID)
+            y = self.get_y_of(ID)
+            temp_list.append(ID)
+            temp_list.append(length)
+            temp_list.append(x)
+            temp_list.append(y)
+
+            final_path_list.append(temp_list)
+
+        return final_path_list
+
 
 #현재 무한루프 돌고있음
 #pre2_closelist [{'adj_ID_node': '6fcc8083d7', 'parent_node': '072fd6eee5', 'g_value': 7.827844438321279, 'h_value': 722.9935487595001, 'f_value': 730.8213931978214, 'flag_var': False}, {'adj_ID_node': '9597610a3c', 'parent_node': '6fcc8083d7', 'g_value': 26.353338951237703, 'h_value': 704.9301346504005, 'f_value': 731.2834736016382, 'flag_var': True}, {'adj_ID_node': 'b7f1907d7f', 'parent_node': '9597610a3c', 'g_value': 68.28846943339117, 'h_value': 662.7918016582996, 'f_value': 731.0802710916907, 'flag_var': True}, {'adj_ID_node': '6a83334252', 'parent_node': 'b7f1907d7f', 'g_value': 71.05835563779226, 'h_value': 659.7854279573796, 'f_value': 730.8437835951719, 'flag_var': True}, {'adj_ID_node': 'cc2b1c6777', 'parent_node': '6a83334252', 'g_value': 96.99261777197398, 'h_value': 633.7060402312245, 'f_value': 730.6986580031985, 'flag_var': True}, {'adj_ID_node': '2c2bde8e2b', 'parent_node': 'cc2b1c6777', 'g_value': 108.72659833716341, 'h_value': 622.6375237400423, 'f_value': 731.3641220772057, 'flag_var': True}]
@@ -509,8 +583,14 @@ if __name__ == '__main__':
     #print(path)
 
     #지진 코드 1
-    A_star.disaster_A_star('023dd00b8c',1)
+    # path_result = A_star.disaster_A_star('023dd00b8c',1)
+    # print(path_result)
 
+    #지진코드 1 , 경도 위도 사용
+    path_result = A_star.disaster_A_star('129.07428826981172','35.13797209189209', 1)
+    print(path_result)
+    # print(A_star.get_x_of('023dd00b8c'))
+    # print(A_star.get_ID_of('129.07428826981172','35.13797209189209')) #129.074288269812-xlsx
     #test
     # start_node=A_star.search('023dd00b8c')
     # end_node = A_star.search('4897df8757')
